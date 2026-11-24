@@ -34,6 +34,8 @@ A macOS menu-bar app that lists the GitHub pull requests waiting on you, and not
 
 Your own actions are ignored, including your own merges unless auto-merge did them. *Ignore bots* (on by default) hides PRs opened by bots such as dependabot and mutes bot comments. Each kind can be turned off in Settings.
 
+Notifications stack together in Notification Center, so one click clears them all. To get a stack per PR, set *Group notifications* to *By PR* in Settings; this needs macOS's notification grouping for PRty Time (System Settings → Notifications) left on *Automatic*.
+
 ## Requirements
 
 - macOS 15 or later, Apple Silicon or Intel

@@ -17,6 +17,7 @@ struct SettingsView: View {
     @AppStorage(Prefs.notifyKey(.reviewing)) private var notifyReviewing = true
     @AppStorage(Prefs.notifyKey(.merged)) private var notifyMerged = true
     @AppStorage(Prefs.notifyKey(.checks)) private var notifyChecks = true
+    @AppStorage(Prefs.notificationGrouping) private var grouping = NotificationGrouping.together
     private let loginItem = LoginItem.shared
     private let hotKey = HotKey.shared
     private let store = PRStore.shared
@@ -49,6 +50,9 @@ struct SettingsView: View {
                 Toggle("Merges of my PRs and PRs I review", isOn: $notifyMerged)
                 Toggle("Failed checks on my PRs", isOn: $notifyChecks)
                     .disabled(!showChecks)
+                Picker("Group notifications", selection: $grouping) {
+                    ForEach(NotificationGrouping.allCases, id: \.self) { Text($0.label).tag($0) }
+                }
             }
             Section {
                 // A closure, not `set: loginItem.set`: passing the method crashes Swift 6.3's compiler.

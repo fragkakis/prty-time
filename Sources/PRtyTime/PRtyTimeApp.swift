@@ -51,6 +51,8 @@ enum Prefs {
     static let checkUpdates = "checkUpdates"
     /// The panel's global shortcut (see `Shortcut.plist`); an empty dictionary turns it off.
     static let hotKey = "hotKey"
+    /// A `NotificationGrouping` raw value.
+    static let notificationGrouping = "notificationGrouping"
 
     static func notifyKey(_ category: NotificationCategory) -> String { "notify.\(category.rawValue)" }
 
@@ -61,7 +63,8 @@ enum Prefs {
     }
 
     static func registerDefaults() {
-        var defaults: [String: Any] = [pollMinutes: 2.0, staleDays: 30, ignoreBots: true, showLineCounts: true, showChecks: false, checkUpdates: true]
+        var defaults: [String: Any] = [pollMinutes: 2.0, staleDays: 30, ignoreBots: true, showLineCounts: true, showChecks: false, checkUpdates: true,
+                                     notificationGrouping: NotificationGrouping.together.rawValue]
         for category in NotificationCategory.allCases { defaults[notifyKey(category)] = true }
         UserDefaults.standard.register(defaults: defaults)
     }
