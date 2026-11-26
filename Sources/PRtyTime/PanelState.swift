@@ -18,6 +18,8 @@ final class PanelState {
     }
     /// The row under the mouse or picked with ↑ and ↓: a PR id, or a repo group's key.
     var highlightedID: String?
+    /// `highlightedID` was picked with ↑ or ↓, not hovered.
+    private(set) var pickedWithKeyboard = false
     /// The PR last picked with ↑ or ↓, for the list to scroll to.
     var scrollTarget: String?
     /// Counts the panel opening, for the view to focus the filter.
@@ -53,6 +55,7 @@ final class PanelState {
         }
         if inside {
             highlightedID = id
+            pickedWithKeyboard = false
         } else if highlightedID == id {
             highlightedID = nil
         }
@@ -61,6 +64,7 @@ final class PanelState {
     /// Highlights the PR picked with ↑ or ↓.
     func pick(_ id: String?) {
         highlightedID = id
+        pickedWithKeyboard = true
         scrollTarget = id
         mouseAtKey = NSEvent.mouseLocation
     }

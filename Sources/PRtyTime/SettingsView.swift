@@ -37,11 +37,11 @@ struct SettingsView: View {
             Section("Keyboard") {
                 LabeledContent("Open the panel from anywhere") { ShortcutRecorder() }
                 if let error = hotKey.error {
-                    Text(error).font(.caption).foregroundStyle(.red)
+                    Text(error).font(.caption).foregroundStyle(Color.danger)
                 }
                 if hotKey.openFailed {
                     Text("The shortcut couldn't open the panel on this version of macOS. Click the menu-bar icon instead.")
-                        .font(.caption).foregroundStyle(.red)
+                        .font(.caption).foregroundStyle(Color.danger)
                 }
                 Text("In the panel, ↑ and ↓ pick a PR, ↩ opens it, and ⌘1 and ⌘2 switch tabs.")
                     .font(.caption)
@@ -62,7 +62,7 @@ struct SettingsView: View {
                 // A closure, not `set: loginItem.set`: passing the method crashes Swift 6.3's compiler.
                 Toggle("Launch at login", isOn: Binding(get: { loginItem.isEnabled }, set: { loginItem.set($0) }))
                 if let error = loginItem.error {
-                    Text(error).font(.caption).foregroundStyle(.red)
+                    Text(error).font(.caption).foregroundStyle(Color.danger)
                 }
             }
             Section {
