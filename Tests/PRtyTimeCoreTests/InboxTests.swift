@@ -31,6 +31,13 @@ import Testing
         #expect(s.unreadOnGitHub.isEmpty)
     }
 
+    @Test func notificationsAreCheckedFromTheOldestDotAtMostTwoWeeksBack() {
+        #expect(snapshot(unread: [:]).inboxFetchStart(now: now) == nil)
+        #expect(snapshot(unread: ["A": earlier, "B": now]).inboxFetchStart(now: now) == earlier)
+        let old = now.addingTimeInterval(-30 * 86_400)
+        #expect(snapshot(unread: ["A": old]).inboxFetchStart(now: now) == now.addingTimeInterval(-14 * 86_400))
+    }
+
     @Test func markingReadClearsEverythingAboutTheDot() {
         var s = snapshot(unread: ["A": earlier, "B": earlier], onGitHub: ["A"])
         s.markRead(["A", "C"])
