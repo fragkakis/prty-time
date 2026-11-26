@@ -83,7 +83,7 @@ final class HotKey {
     @ObservationIgnored private var ref: EventHotKeyRef?
     @ObservationIgnored private var keyMonitor: Any?
     @ObservationIgnored private var resignObserver: NSObjectProtocol?
-    @ObservationIgnored private let log = Logger(subsystem: "com.fragkakis.prty", category: "hotkey")
+    @ObservationIgnored private let log = Logger(subsystem: AppInfo.subsystem, category: "hotkey")
 
     func start() {
         // Never set: the default. Turned off: an empty dictionary.
@@ -157,7 +157,7 @@ final class HotKey {
 /// macOS update, look here.
 @MainActor
 enum MenuBarPanel {
-    private static let log = Logger(subsystem: "com.fragkakis.prty", category: "hotkey")
+    private static let log = Logger(subsystem: AppInfo.subsystem, category: "hotkey")
 
     static func toggle() {
         let panel = PanelState.shared

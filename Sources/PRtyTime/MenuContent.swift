@@ -4,8 +4,8 @@ import SwiftUI
 
 struct MenuBarLabel: View {
     let store: PRStore
-    @AppStorage(Prefs.staleDays) private var staleDays = 30
-    @AppStorage(Prefs.ignoreBots) private var ignoreBots = true
+    @AppStorage(Prefs.staleDays) private var staleDays = Prefs.Default.staleDays
+    @AppStorage(Prefs.ignoreBots) private var ignoreBots = Prefs.Default.ignoreBots
 
     var body: some View {
         let count = MenuSections(buckets: store.buckets, staleDays: staleDays, hideBots: ignoreBots, snoozed: Set(store.snoozed.keys)).badgeCount
@@ -23,10 +23,10 @@ struct MenuBarLabel: View {
 /// The panel shown when clicking the menu-bar icon.
 struct MenuContent: View {
     let store: PRStore
-    @AppStorage(Prefs.staleDays) private var staleDays = 30
-    @AppStorage(Prefs.ignoreBots) private var ignoreBots = true
-    @AppStorage(Prefs.showLineCounts) private var showLineCounts = true
-    @AppStorage(Prefs.showChecks) private var showChecks = false
+    @AppStorage(Prefs.staleDays) private var staleDays = Prefs.Default.staleDays
+    @AppStorage(Prefs.ignoreBots) private var ignoreBots = Prefs.Default.ignoreBots
+    @AppStorage(Prefs.showLineCounts) private var showLineCounts = Prefs.Default.showLineCounts
+    @AppStorage(Prefs.showChecks) private var showChecks = Prefs.Default.showChecks
     @Environment(\.openSettings) private var openSettings
     @Environment(\.dismiss) private var dismiss
     @FocusState private var filterFocused: Bool

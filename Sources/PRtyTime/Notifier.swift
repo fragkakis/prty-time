@@ -11,7 +11,7 @@ enum NotificationGrouping: String, CaseIterable {
     case byPR
 
     static var current: Self {
-        UserDefaults.standard.string(forKey: Prefs.notificationGrouping).flatMap(Self.init) ?? .together
+        UserDefaults.standard.string(forKey: Prefs.notificationGrouping).flatMap(Self.init) ?? Prefs.Default.notificationGrouping
     }
 
     var label: String {

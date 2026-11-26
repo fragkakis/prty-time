@@ -43,7 +43,7 @@ final class PRStore {
     @ObservationIgnored private var failures = 0
     /// Feeds `diffStats` and `branches`.
     @ObservationIgnored private var details = DetailsCache()
-    @ObservationIgnored private let log = Logger(subsystem: "com.fragkakis.prty", category: "poll")
+    @ObservationIgnored private let log = Logger(subsystem: AppInfo.subsystem, category: "poll")
 
     func start() {
         snapshot = stateStore.load()
@@ -150,12 +150,7 @@ final class PRStore {
                     log.error("fetching checks for \(mine.count) PRs failed: \(error.localizedDescription, privacy: .public)")
                 }
             }
-            let settings = DiffSettings(
-                ignoreBots: defaults.bool(forKey: Prefs.ignoreBots),
-                staleDays: defaults.integer(forKey: Prefs.staleDays),
-                notifySelf: Prefs.notifySelf,
-                enabled: Set(NotificationCategory.allCases.filter { defaults.bool(forKey: Prefs.notifyKey($0)) })
-            )
+            let settings = Prefs.diffSettings
             let diff = ActivityDiff.run(previous: snapshot, poll: data, settings: settings)
             var next = diff.snapshot
             // Clear dots for PRs read on GitHub.
