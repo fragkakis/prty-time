@@ -23,11 +23,27 @@ public struct RepoGroup: Sendable, Identifiable {
     public var hasForYou: Bool { items.contains(where: \.forYou) }
 
     /// What the group's collapsed state is saved under: "<section>/<owner>/<repo>".
-    public func key(in section: String) -> String { "\(section)/\(repo)" }
+    public func key(in section: ListSection) -> String { "\(section.rawValue)/\(repo)" }
 }
 
 public enum PanelTab: Hashable, Sendable {
     case review, mine
+}
+
+/// A list of repo groups in the panel. The raw values are part of the saved
+/// collapsed-group keys (`RepoGroup.key(in:)`): renaming one loses that state.
+public enum ListSection: String, CaseIterable, Sendable {
+    case review, reviewed, mine
+    case snoozedReview = "snoozed-review"
+    case snoozedMine = "snoozed-mine"
+
+    /// The Snoozed list of `tab`.
+    public static func snoozed(_ tab: PanelTab) -> Self {
+        switch tab {
+        case .review: .snoozedReview
+        case .mine: .snoozedMine
+        }
+    }
 }
 
 extension Array where Element == PRItem {
@@ -101,20 +117,20 @@ public struct MenuSections: Sendable {
 extension MenuSections {
     /// The PRs `tab` shows, top to bottom: the rows ↑ and ↓ move through.
     /// Collapsed repo groups (keys from `RepoGroup.key(in:)`) and the Snoozed
-    /// list while closed are left out. The section names are MenuContent's.
+    /// list while closed are left out.
     public func rows(_ tab: PanelTab, collapsed: Set<String>, snoozedOpen: Bool) -> [PullRequest] {
-        func shown(_ items: [PRItem], _ section: String) -> [PullRequest] {
+        func shown(_ items: [PRItem], _ section: ListSection) -> [PullRequest] {
             items.groupedByRepo()
                 .filter { !collapsed.contains($0.key(in: section)) }
                 .flatMap { $0.items.map(\.pr) }
         }
         switch tab {
         case .review:
-            return shown(toReview, "review") + shown(reviewed.map { PRItem(pr: $0) }, "reviewed")
-                + (snoozedOpen ? shown(snoozedReview, "snoozed-review") : [])
+            return shown(toReview, .review) + shown(reviewed.map { PRItem(pr: $0) }, .reviewed)
+                + (snoozedOpen ? shown(snoozedReview, .snoozedReview) : [])
         case .mine:
-            return shown(mine.map { PRItem(pr: $0) }, "mine")
-                + (snoozedOpen ? shown(snoozedMine.map { PRItem(pr: $0) }, "snoozed-mine") : [])
+            return shown(mine.map { PRItem(pr: $0) }, .mine)
+                + (snoozedOpen ? shown(snoozedMine.map { PRItem(pr: $0) }, .snoozedMine) : [])
         }
     }
 }

@@ -230,17 +230,17 @@ struct MenuContent: View {
         if sections.toReview.isEmpty && sections.reviewed.isEmpty {
             empty(filtering ? "No matching PRs" : "Nothing to review")
         }
-        groups(sections.toReview, section: "review", expandAll: expandAll)
+        groups(sections.toReview, section: .review, expandAll: expandAll)
         if !sections.reviewed.isEmpty {
             header("Reviewed by you")
-            groups(sections.reviewed.map { PRItem(pr: $0) }, section: "reviewed", expandAll: expandAll)
+            groups(sections.reviewed.map { PRItem(pr: $0) }, section: .reviewed, expandAll: expandAll)
         }
         snoozedSection(sections.snoozedReview, tab: .review, expandAll: expandAll)
     }
 
     @ViewBuilder private func mineTab(_ sections: MenuSections, expandAll: Bool) -> some View {
         if sections.mine.isEmpty { empty(filtering ? "No matching PRs" : "No open PRs") }
-        groups(sections.mine.map { PRItem(pr: $0) }, section: "mine", mine: true, expandAll: expandAll)
+        groups(sections.mine.map { PRItem(pr: $0) }, section: .mine, mine: true, expandAll: expandAll)
         snoozedSection(sections.snoozedMine.map { PRItem(pr: $0) }, tab: .mine, mine: true, expandAll: expandAll)
     }
 
@@ -274,14 +274,14 @@ struct MenuContent: View {
             .help("Snoozed PRs come back when there's new activity on them, or when their time runs out")
             if open {
                 // Dimmed, to tell them from the groups above.
-                groups(items, section: "snoozed-\(tab)", mine: mine, expandAll: expandAll)
+                groups(items, section: .snoozed(tab), mine: mine, expandAll: expandAll)
                     .opacity(0.6)
             }
         }
     }
 
     /// Collapsible per-repo groups. `section` keeps collapse state separate per list.
-    private func groups(_ items: [PRItem], section: String, mine: Bool = false, expandAll: Bool) -> some View {
+    private func groups(_ items: [PRItem], section: ListSection, mine: Bool = false, expandAll: Bool) -> some View {
         ForEach(items.groupedByRepo()) { group in
             let key = group.key(in: section)
             let collapsed = !expandAll && panel.collapsed.contains(key)
