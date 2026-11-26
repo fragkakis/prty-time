@@ -36,14 +36,21 @@ final class PRStore {
     private static let notifiedUpdateKey = "notifiedUpdate"
 
     @ObservationIgnored private var snapshot: Snapshot?
-    @ObservationIgnored private let client = GitHubClient()
+    /// Dots cleared or put by hand while a poll runs. The poll diffs the snapshot
+    /// from before them, so they're replayed onto its result.
+    @ObservationIgnored private var dotChanges: [(inout Snapshot) -> Void] = []
+    @ObservationIgnored private let client: GitHubClient
+    @ObservationIgnored private let poller: Poller
     @ObservationIgnored private let stateStore = StateStore()
     @ObservationIgnored private let notifier = Notifier()
     @ObservationIgnored private var loop: Task<Void, Never>?
-    @ObservationIgnored private var failures = 0
-    /// Feeds `diffStats` and `branches`.
-    @ObservationIgnored private var details = DetailsCache()
     @ObservationIgnored private let log = Logger(subsystem: AppInfo.subsystem, category: "poll")
+
+    private init() {
+        // One client for both, so `gh auth token` runs once.
+        client = GitHubClient()
+        poller = Poller(github: client)
+    }
 
     func start() {
         snapshot = stateStore.load()
@@ -100,13 +107,19 @@ final class PRStore {
         let read = unread.intersection(ids)
         guard !read.isEmpty else { return }
         unread.subtract(read)
-        snapshot?.markRead(read)
-        persist()
+        change { $0.markRead(read) }
     }
 
     func markUnread(_ id: String) {
         guard unread.insert(id).inserted else { return }
-        snapshot?.markUnread(id, at: Date())
+        let now = Date()
+        change { $0.markUnread(id, at: now) }
+    }
+
+    /// Applies a dot change to the snapshot, and keeps it for the poll running, if any.
+    private func change(_ edit: @escaping (inout Snapshot) -> Void) {
+        if snapshot != nil { edit(&snapshot!) }
+        if isRefreshing { dotChanges.append(edit) }
         persist()
     }
 
@@ -123,98 +136,57 @@ final class PRStore {
     /// Runs one poll and returns the number of seconds until the next one.
     private func poll() async -> TimeInterval {
         isRefreshing = true
-        defer { isRefreshing = false }
-        let defaults = UserDefaults.standard
-        let interval = PollSchedule.interval(minutes: defaults.double(forKey: Prefs.pollMinutes))
+        dotChanges = []
+        defer {
+            isRefreshing = false
+            dotChanges = []
+        }
         let started = Date()
 
-        do {
-            let result = try await client.poll()
-            var data = result.data
-            // PRs that left every list: look up which were merged.
-            if let missing = snapshot?.missing(from: data), !missing.isEmpty {
-                do {
-                    data.closed = try await client.closedPRs(missing)
-                } catch {
-                    log.error("checking \(missing.count) closed PRs failed: \(error.localizedDescription, privacy: .public)")
-                }
-            }
-            // Every poll, not only for updated PRs like line counts: checks
-            // finishing needn't change a PR's updatedAt.
-            if defaults.bool(forKey: Prefs.showChecks) {
-                let mine = data.prs(in: .mine).map(\.id)
-                do {
-                    data.mergeStatus = try await client.mergeStatus(mine)
-                } catch {
-                    data.mergeStatus = nil
-                    log.error("fetching checks for \(mine.count) PRs failed: \(error.localizedDescription, privacy: .public)")
-                }
-            }
-            let settings = Prefs.diffSettings
-            let diff = ActivityDiff.run(previous: snapshot, poll: data, settings: settings)
-            var next = diff.snapshot
-            // Clear dots for PRs read on GitHub.
-            var readOnGitHub = 0
-            if let since = next.inboxFetchStart(now: Date()) {
-                do {
-                    let inbox = try await client.inbox(since: since)
-                    readOnGitHub = next.syncRead(with: inbox, prs: data.buckets.values.flatMap { $0 })
-                } catch {
-                    log.error("checking GitHub notifications failed: \(error.localizedDescription, privacy: .public)")
-                }
-            }
+        switch await poller.run(previous: snapshot, settings: Prefs.pollSettings) {
+        case .cancelled(let delay):
+            return delay
+        case .failed(let message, let failures, let delay):
+            errorMessage = message
+            log.error("poll failed (\(failures)x): \(message, privacy: .public)")
+            return delay
+        case .updated(let poll):
+            for error in poll.errors { log.error("\(error, privacy: .public)") }
+            var next = poll.snapshot
+            for edit in dotChanges { edit(&next) }
+            dotChanges = []
             snapshot = next
             unread = next.unread
-            buckets = result.data.buckets
+            buckets = poll.buckets
             // On a failed fetch (nil) keep showing the last ones.
-            if let fresh = data.mergeStatus, fresh != mergeStatus { mergeStatus = fresh }
-            let listed = Set(data.buckets.values.joined().map(\.id))
-            let stillSnoozed = Snooze.remaining(snoozed, activity: diff.activity, listed: listed, now: Date())
+            if let fresh = poll.mergeStatus, fresh != mergeStatus { mergeStatus = fresh }
+            let listed = Set(poll.buckets.values.joined().map(\.id))
+            let stillSnoozed = Snooze.remaining(snoozed, activity: poll.activity, listed: listed, now: Date())
             if stillSnoozed != snoozed { snoozed = stillSnoozed }
             lastRefresh = Date()
             errorMessage = nil
-            let schedule = PollSchedule.afterSuccess(result, interval: interval, now: Date())
-            warning = schedule.warning
-            failures = 0
+            warning = poll.warning
             persist()
-            diff.notifications.forEach(notifier.post)
-            let shown = MenuSections(buckets: data.buckets, staleDays: settings.staleDays, hideBots: settings.ignoreBots)
-            let detailsFetched = await refreshDetails(for: shown.toReview.map(\.pr) + shown.reviewed + shown.mine)
+            poll.notifications.forEach(notifier.post)
+            let detailsFetched = await refreshDetails(for: poll.shown)
 
             let duration = String(format: "%.1f", Date().timeIntervalSince(started))
             await checkForUpdate()
-            log.notice("poll ok: requests=\(result.requests) closed=\(data.closed.count) readOnGitHub=\(readOnGitHub) cost=\(result.cost) remaining=\(result.rateLimit?.remaining ?? -1) details=\(detailsFetched) checks=\(data.mergeStatus?.count ?? -1) duration=\(duration, privacy: .public)s notifications=\(diff.notifications.count)")
-            return schedule.delay
-        } catch {
-            if Task.isCancelled { return interval }
-            failures += 1
-            errorMessage = error.localizedDescription
-            log.error("poll failed (\(self.failures)x): \(error.localizedDescription, privacy: .public)")
-            return PollSchedule.retryDelay(failures: failures)
+            log.notice("poll ok: \(poll.summary, privacy: .public) details=\(detailsFetched) duration=\(duration, privacy: .public)s")
+            return poll.delay
         }
     }
 
-    /// Fetches line counts and branches for PRs that are new or updated since
-    /// their last fetch, and drops the ones no longer shown. Fetched with line
+    /// Updates line counts and branches of the PRs on show. Fetched with line
     /// counts turned off too, for the menu's Copy branch name. Returns how many
     /// were requested.
     private func refreshDetails(for prs: [PullRequest]) async -> Int {
-        let requested = details.outdated(keeping: prs)
-        publishDetails()
-        guard !requested.isEmpty else { return 0 }
-        do {
-            details.store(try await client.details(Array(requested.keys)), requested: requested)
-            publishDetails()
-        } catch {
-            log.error("fetching details for \(requested.count) PRs failed: \(error.localizedDescription, privacy: .public)")
-        }
-        return requested.count
-    }
-
-    /// Only assigned on change, to avoid redrawing the panel every poll.
-    private func publishDetails() {
+        let (details, requested, error) = await poller.refreshDetails(for: prs)
+        if let error { log.error("\(error, privacy: .public)") }
+        // Only assigned on change, to avoid redrawing the panel every poll.
         if details.diffStats != diffStats { diffStats = details.diffStats }
         if details.branches != branches { branches = details.branches }
+        return requested
     }
 
     /// Looks for a newer release once a day (after a poll, when the network is
