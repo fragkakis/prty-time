@@ -70,6 +70,8 @@ final class HotKey {
     /// Why the shortcut couldn't be registered. Another app using it isn't
     /// one: macOS registers it for both.
     private(set) var error: String?
+    /// Set when the shortcut last failed to open the panel (see `MenuBarPanel`).
+    var openFailed = false
     /// Settings is recording a new shortcut from the next key typed. The
     /// current one is let go meanwhile, so it can be typed too.
     var recording = false {
@@ -170,7 +172,7 @@ enum MenuBarPanel {
 
     private static func open() {
         guard let button = statusButton else {
-            log.error("status-bar button not found")
+            failed("status-bar button not found")
             return
         }
         // On macOS 27 SwiftUI's status item (NSSceneStatusItem) gives its button
@@ -182,6 +184,23 @@ enum MenuBarPanel {
         } else {
             button.performClick(nil)
         }
+        // Neither way reports failing, so check that the panel opened. Counting
+        // openings, not `isOpen`, as a second press may close it again.
+        let openings = PanelState.shared.openings
+        Task {
+            try? await Task.sleep(for: .seconds(1))
+            if PanelState.shared.openings == openings && !PanelState.shared.isOpen {
+                failed("panel didn't open (button action: \(button.action.map(NSStringFromSelector) ?? "none"))")
+            } else {
+                HotKey.shared.openFailed = false
+            }
+        }
+    }
+
+    private static func failed(_ reason: String) {
+        log.error("opening the panel failed: \(reason, privacy: .public)")
+        HotKey.shared.openFailed = true
+        NSSound.beep()
     }
 
     /// The status item's button. Besides the window holding it, the status bar

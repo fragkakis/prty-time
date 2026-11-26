@@ -39,6 +39,10 @@ struct SettingsView: View {
                 if let error = hotKey.error {
                     Text(error).font(.caption).foregroundStyle(.red)
                 }
+                if hotKey.openFailed {
+                    Text("The shortcut couldn't open the panel on this version of macOS. Click the menu-bar icon instead.")
+                        .font(.caption).foregroundStyle(.red)
+                }
                 Text("In the panel, ↑ and ↓ pick a PR, ↩ opens it, and ⌘1 and ⌘2 switch tabs.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
