@@ -17,7 +17,7 @@ final class PRStore {
     private(set) var diffStats: [String: DiffStat] = [:]
     /// Head branches of the PRs on show, by PR id.
     private(set) var branches: [String: String] = [:]
-    /// Checks and conflicts of your PRs, by PR id. Empty unless `Prefs.showChecks` is on.
+    /// Checks and conflicts of the PRs on show, by PR id. Empty unless `Prefs.showChecks` is on.
     private(set) var mergeStatus: [String: MergeStatus] = [:]
     /// Snoozed PRs by id, with when they come back on their own (see `Snooze`).
     /// Not in the snapshot, which a poll replaces after awaiting GitHub: a snooze
@@ -54,10 +54,11 @@ final class PRStore {
 
     #if DEMO
     /// Shows demo data as if polled, for `Screenshot`.
-    func showDemo(buckets: [Bucket: [PullRequest]], unread: Set<String>, diffStats: [String: DiffStat], lastRefresh: Date?) {
+    func showDemo(buckets: [Bucket: [PullRequest]], unread: Set<String>, diffStats: [String: DiffStat], mergeStatus: [String: MergeStatus], lastRefresh: Date?) {
         self.buckets = buckets
         self.unread = unread
         self.diffStats = diffStats
+        self.mergeStatus = mergeStatus
         self.lastRefresh = lastRefresh
     }
     #endif

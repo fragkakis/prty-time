@@ -31,7 +31,7 @@ struct SettingsView: View {
             }
             Section("Panel") {
                 Toggle("Show lines added and removed", isOn: $showLineCounts)
-                Toggle("Show checks and merge conflicts on my PRs", isOn: $showChecks)
+                Toggle("Show checks and merge conflicts", isOn: $showChecks)
                     .onChange(of: showChecks) { _, on in if on { PRStore.shared.refreshNow() } }
             }
             Section("Keyboard") {

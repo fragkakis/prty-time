@@ -112,7 +112,7 @@ struct PRRow: View {
     /// Spell out the review decision instead of showing just an icon.
     var labeledStatus = false
     var diff: DiffStat?
-    /// Only fetched for your PRs.
+    /// nil with checks turned off, or until first fetched.
     var merge: MergeStatus?
     var snoozedUntil: Date?
     /// Snoozed: secondary text instead of a lower opacity, which would fall below readable contrast.

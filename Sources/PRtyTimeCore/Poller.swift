@@ -14,7 +14,7 @@ extension GitHubClient: GitHubAPI {}
 /// The settings a poll runs with.
 public struct PollSettings: Sendable {
     public var intervalMinutes: Double
-    /// Fetch checks and merge conflicts of your PRs.
+    /// Fetch checks and merge conflicts of the PRs the panel lists.
     public var fetchChecks: Bool
     public var diff: DiffSettings
 
@@ -78,15 +78,18 @@ public actor Poller {
                     errors.append("checking \(missing.count) closed PRs failed: \(error.localizedDescription)")
                 }
             }
-            // Every poll, not only for updated PRs like details: checks
-            // finishing needn't change a PR's updatedAt.
+            let sections = MenuSections(buckets: data.buckets, staleDays: settings.diff.staleDays, hideBots: settings.diff.ignoreBots, now: now)
+            let shown = sections.toReview.map(\.pr) + sections.reviewed + sections.mine
+            // For every PR on show (only yours notify when they fail), every
+            // poll, not only for updated PRs like details: checks finishing
+            // needn't change a PR's updatedAt.
             if settings.fetchChecks {
-                let mine = data.prs(in: .mine).map(\.id)
+                let ids = shown.map(\.id)
                 do {
-                    data.mergeStatus = try await github.mergeStatus(mine)
+                    data.mergeStatus = try await github.mergeStatus(ids)
                 } catch {
                     data.mergeStatus = nil
-                    errors.append("fetching checks for \(mine.count) PRs failed: \(error.localizedDescription)")
+                    errors.append("fetching checks for \(ids.count) PRs failed: \(error.localizedDescription)")
                 }
             }
             let diff = ActivityDiff.run(previous: previous, poll: data, settings: settings.diff)
@@ -103,13 +106,12 @@ public actor Poller {
             }
             failures = 0
             let schedule = PollSchedule.afterSuccess(result, interval: interval, now: now)
-            let shown = MenuSections(buckets: data.buckets, staleDays: settings.diff.staleDays, hideBots: settings.diff.ignoreBots)
             let summary = "requests=\(result.requests) closed=\(data.closed.count) readOnGitHub=\(readOnGitHub) cost=\(result.cost) "
                 + "remaining=\(result.rateLimit?.remaining ?? -1) checks=\(data.mergeStatus?.count ?? -1) notifications=\(diff.notifications.count)"
             return .updated(PollUpdate(
                 snapshot: next, buckets: data.buckets, mergeStatus: data.mergeStatus, activity: diff.activity,
                 notifications: diff.notifications, warning: schedule.warning, delay: schedule.delay,
-                shown: shown.toReview.map(\.pr) + shown.reviewed + shown.mine, errors: errors, summary: summary
+                shown: shown, errors: errors, summary: summary
             ))
         } catch {
             if Task.isCancelled { return .cancelled(delay: interval) }

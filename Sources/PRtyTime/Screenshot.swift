@@ -50,6 +50,14 @@ enum Screenshot {
         PRStore.shared.showDemo(
             buckets: buckets, unread: ["d1", "t2", "m1"],
             diffStats: counts.mapValues { DiffStat(additions: $0.0, deletions: $0.1) },
+            // Shown with Settings' checks turned on (the default).
+            mergeStatus: [
+                "d1": MergeStatus(checks: .passing, headOid: "a"), "d2": MergeStatus(checks: .pending, headOid: "b"),
+                "t1": MergeStatus(checks: .passing, headOid: "c"), "t2": MergeStatus(checks: .failing, headOid: "d"),
+                "t3": MergeStatus(checks: .passing, headOid: "e"), "r1": MergeStatus(checks: .passing, headOid: "f"),
+                "m1": MergeStatus(checks: .passing, headOid: "g"), "m2": MergeStatus(checks: .pending, headOid: "h"),
+                "m3": MergeStatus(checks: .failing, conflicting: true, headOid: "i"),
+            ],
             // A daytime clock in the footer, whenever this runs. Ages use `updatedAt`, not this.
             lastRefresh: Calendar.current.date(bySettingHour: 10, minute: 42, second: 0, of: now)
         )
