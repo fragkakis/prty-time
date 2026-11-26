@@ -34,6 +34,13 @@ import Testing
         #expect(sections.rows(.mine, collapsed: collapsed, snoozedOpen: true).map(\.id) == ["M1"])
     }
 
+    /// Users' collapsed groups are saved under these names.
+    @Test func sectionNamesStayAsSaved() {
+        #expect(ListSection.allCases.map(\.rawValue) == ["review", "reviewed", "mine", "snoozed-review", "snoozed-mine"])
+        #expect(ListSection.snoozed(.review) == .snoozedReview)
+        #expect(ListSection.snoozed(.mine) == .snoozedMine)
+    }
+
     @Test func movingStopsAtTheEnds() {
         let rows = sections.rows(.review, collapsed: [], snoozedOpen: false)
         #expect(rows.id(movingFrom: "A", by: 1) == "C")
