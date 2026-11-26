@@ -15,3 +15,5 @@ jobs:
       - uses: actions/checkout@v7
       - run: make build
       - run: make test
+      # Screenshot.swift only builds with DEMO; this keeps it from rotting.
+      - run: swift build -Xswiftc -DDEMO --scratch-path .build/demo

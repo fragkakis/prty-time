@@ -52,6 +52,16 @@ final class PRStore {
         poller = Poller(github: client)
     }
 
+    #if DEMO
+    /// Shows demo data as if polled, for `Screenshot`.
+    func showDemo(buckets: [Bucket: [PullRequest]], unread: Set<String>, diffStats: [String: DiffStat], lastRefresh: Date?) {
+        self.buckets = buckets
+        self.unread = unread
+        self.diffStats = diffStats
+        self.lastRefresh = lastRefresh
+    }
+    #endif
+
     func start() {
         snapshot = stateStore.load()
         unread = snapshot?.unread ?? []

@@ -4,16 +4,10 @@ import PRtyTimeCore
 import SwiftUI
 import UniformTypeIdentifiers
 
+#if DEMO
 // Renders the README's docs/demo-{light,dark}.gif (the keyboard flow) and
 // docs/social-preview.png (upload it in the repo's Settings → Social preview) from
-// demo data. Not part of the build; to use it:
-// 1. Copy this file into Sources/PRtyTime/.
-// 2. In PRStore.swift, drop `private(set)` from buckets, unread, lastRefresh and diffStats;
-//    in Avatar.swift, from AvatarStore.images.
-// 3. Start AppDelegate.applicationDidFinishLaunching with
-//    `if let dir = ProcessInfo.processInfo.environment["PRTY_SHOT"] { Screenshot.run(to: dir); return }`
-// 4. `make bundle`, then `PRTY_SHOT=<dir> ".build/PRty Time.app/Contents/MacOS/PRtyTime"`.
-// 5. Copy the images to docs/ and revert steps 1-3.
+// demo data. Only in DEMO builds: `make screenshots`.
 @MainActor
 enum Screenshot {
     static func run(to dir: String) {
@@ -28,8 +22,7 @@ enum Screenshot {
                 requestedTeams: teams, hasDetails: true, reviewDecision: decision
             )
         }
-        let store = PRStore.shared
-        store.buckets = [
+        let buckets: [Bucket: [PullRequest]] = [
             .direct: [
                 pr("d1", "acme/api", 482, "Add rate limiting to the public API", by: "alice", 12),
                 pr("d2", "acme/web", 1290, "Fix flaky checkout test", by: "bob", 190),
@@ -50,16 +43,18 @@ enum Screenshot {
                 pr("m4", "acme/infra", 79, "Add staging smoke tests", by: "you", 3 * 1440, draft: true, decision: .reviewRequired),
             ],
         ]
-        store.unread = ["d1", "t2", "m1"]
-        // A daytime clock in the footer, whenever this runs. Ages use `updatedAt`, not this.
-        store.lastRefresh = Calendar.current.date(bySettingHour: 10, minute: 42, second: 0, of: now)
         let counts: [String: (Int, Int)] = [
             "d1": (148, 12), "d2": (6, 9), "t1": (2, 2), "t2": (1_240, 310), "t3": (87, 45), "t4": (214, 36),
             "r1": (64, 8), "m1": (96, 14), "m2": (41, 17), "m3": (12, 1_870), "m4": (230, 0),
         ]
-        store.diffStats = counts.mapValues { DiffStat(additions: $0.0, deletions: $0.1) }
+        PRStore.shared.showDemo(
+            buckets: buckets, unread: ["d1", "t2", "m1"],
+            diffStats: counts.mapValues { DiffStat(additions: $0.0, deletions: $0.1) },
+            // A daytime clock in the footer, whenever this runs. Ages use `updatedAt`, not this.
+            lastRefresh: Calendar.current.date(bySettingHour: 10, minute: 42, second: 0, of: now)
+        )
         for login in ["alice", "bob", "carol", "dan", "erin", "frank", "grace"] {
-            AvatarStore.shared.images[avatarURL(login)] = identicon(login)
+            AvatarStore.shared.preload(identicon(login), for: avatarURL(login))
         }
 
         Task {
@@ -240,3 +235,4 @@ enum Screenshot {
         try? rep.representation(using: .png, properties: [:])!.write(to: URL(fileURLWithPath: dir).appendingPathComponent("social-preview.png"))
     }
 }
+#endif
