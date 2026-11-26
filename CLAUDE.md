@@ -5,7 +5,7 @@ macOS menu-bar app (SwiftUI `MenuBarExtra`) that lists the GitHub PRs waiting on
 ## Layout
 
 - `Sources/PRtyTimeCore`: pure logic, unit-tested. `GitHubClient` (one GraphQL poll, `nodes(ids:)` lookup to tell merged from closed, REST notifications for read state; token from `gh auth token`), `ActivityDiff` (snapshot diff → notifications and unread dots), `Inbox` (clears dots for PRs read on GitHub), `StateStore`.
-- `Sources/PRtyTime`: the app. `PRStore` runs the poll loop; `MenuContent` is the panel; `SettingsView`, `Notifier`, `MenuBarIcon`, `HotKey` (global shortcut).
+- `Sources/PRtyTime`: the app. `PRStore` runs the poll loop; `MenuContent` is the panel (`PRRow` its rows, `PanelState` its view state); `SettingsView`, `Notifier`, `MenuBarIcon`, `HotKey` (global shortcut).
 - MenuBarExtra has no API to open its panel from code. `MenuBarPanel` (HotKey.swift) finds SwiftUI's status item through private AppKit: on macOS 27 it calls `_requestExpandedInterfaceSession` (the button has no action, so `performClick` does nothing); earlier it clicks the button. If the shortcut stops opening the panel after a macOS update, start there.
 - `Tests/PRtyTimeCoreTests`: Swift Testing, Core only.
 - The combined poll query takes ~8s against GitHub's ~10s timeout (on timeout it falls back to one request per search). Don't add fields to the search fragments; fetch extras with a separate `nodes(ids:)` query, as `details`, `mergeStatus` and `closedPRs` do.
