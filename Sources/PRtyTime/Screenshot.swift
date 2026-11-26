@@ -131,9 +131,9 @@ enum Screenshot {
             ("Type to filter", 0.6, { panel.query = "post" }),
             ("↩ opens the first match", 1.8, {}),
             ("Esc clears the filter", 1.2, { panel.query = "" }),
-            ("↓ and ↑ pick a PR", 0.6, { panel.highlightedID = "d1" }),
-            ("↓ and ↑ pick a PR", 0.6, { panel.highlightedID = "t1" }),
-            ("↓ and ↑ pick a PR", 1.2, { panel.highlightedID = "d2" }),
+            ("↓ and ↑ pick a PR", 0.6, { panel.pick("d1") }),
+            ("↓ and ↑ pick a PR", 0.6, { panel.pick("t1") }),
+            ("↓ and ↑ pick a PR", 1.2, { panel.pick("d2") }),
             ("⌘2 switches tabs", 2.2, { panel.highlightedID = nil; panel.tab = .mine }),
         ]
         var frames: [(CGImage, Double)] = []
