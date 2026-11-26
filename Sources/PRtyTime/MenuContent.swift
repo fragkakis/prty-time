@@ -17,6 +17,10 @@ struct MenuBarLabel: View {
             }
             if count > 0 { Text("\(count)") }
         }
+        // Becomes the status item's title for VoiceOver, which was just the
+        // count ("6, status menu"). A value isn't passed on, so it's all here.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("PRty Time, " + (store.errorMessage != nil ? "couldn't refresh" : count == 0 ? "nothing to review" : "\(count) to review"))
     }
 }
 
@@ -46,7 +50,7 @@ struct MenuContent: View {
         VStack(spacing: 0) {
             filterField(rows: rows, selected: selected)
                 .padding([.horizontal, .top], 10)
-            Picker("", selection: Binding(get: { panel.tab }, set: { panel.tab = $0 })) {
+            Picker("Pull requests", selection: Binding(get: { panel.tab }, set: { panel.tab = $0 })) {
                 Text("To review (\(shown.toReview.count))").tag(PanelTab.review)
                 Text("My PRs (\(shown.mine.count))").tag(PanelTab.mine)
             }
@@ -117,6 +121,7 @@ struct MenuContent: View {
         HStack(spacing: 6) {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
             TextField("Filter by #, title, repo, author, reviewer", text: Binding(get: { panel.query }, set: { panel.query = $0 }))
                 .textFieldStyle(.plain)
                 .focused($filterFocused)
@@ -142,6 +147,7 @@ struct MenuContent: View {
                     .buttonStyle(.borderless)
                     .foregroundStyle(.secondary)
                     .help("Clear filter")
+                    .accessibilityLabel("Clear filter")
             }
         }
         .padding(.horizontal, 8)
@@ -213,6 +219,8 @@ struct MenuContent: View {
             .padding(.top, 10)
             .padding(.bottom, 4)
             .help("Snoozed PRs come back when there's new activity on them, or when their time runs out")
+            .accessibilityLabel("Snoozed, \(items.count) pull request\(items.count == 1 ? "" : "s")")
+            .accessibilityValue(open ? "expanded" : "collapsed")
             if open {
                 // Dimmed, to tell them from the groups above.
                 groups(items, section: .snoozed(tab), mine: mine, dimmed: true, expandAll: expandAll)
@@ -250,6 +258,7 @@ struct MenuContent: View {
             Button { store.refreshNow() } label: { Image(systemName: "arrow.clockwise") }
                 .keyboardShortcut("r")
                 .help("Refresh now (⌘R)")
+                .accessibilityLabel("Refresh")
                 .disabled(store.isRefreshing)
             Button {
                 dismiss()
@@ -258,9 +267,11 @@ struct MenuContent: View {
             } label: { Image(systemName: "gearshape") }
                 .keyboardShortcut(",")
                 .help("Settings (⌘,)")
+                .accessibilityLabel("Settings")
             Button { NSApp.terminate(nil) } label: { Image(systemName: "power") }
                 .keyboardShortcut("q")
                 .help("Quit PRty Time (⌘Q)")
+                .accessibilityLabel("Quit PRty Time")
         }
         .buttonStyle(.borderless)
         .padding(.horizontal, 12)
