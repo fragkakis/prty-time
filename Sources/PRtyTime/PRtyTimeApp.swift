@@ -38,6 +38,8 @@ enum AppInfo {
     /// "dev" when run outside the app bundle (`swift run`).
     static let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev"
     static let repo = URL(string: "https://github.com/fragkakis/prty-time")!
+    /// The Logger subsystem, the same as the bundle id. Don't rename (see CLAUDE.md).
+    static let subsystem = "com.fragkakis.prty"
 }
 
 enum Prefs {
@@ -62,10 +64,37 @@ enum Prefs {
         ProcessInfo.processInfo.environment["PRTY_NOTIFY_SELF"] == "1" || UserDefaults.standard.bool(forKey: "notifySelf")
     }
 
+    /// Each pref's default, registered at launch. `@AppStorage` declarations start from these too.
+    enum Default {
+        static let pollMinutes = 2.0
+        static let staleDays = 30
+        static let ignoreBots = true
+        static let showLineCounts = true
+        static let showChecks = false
+        static let checkUpdates = true
+        /// For every `NotificationCategory`.
+        static let notify = true
+        static let notificationGrouping = NotificationGrouping.together
+    }
+
+    /// The saved settings `ActivityDiff` runs with.
+    static var diffSettings: DiffSettings {
+        let defaults = UserDefaults.standard
+        return DiffSettings(
+            ignoreBots: defaults.bool(forKey: ignoreBots),
+            staleDays: defaults.integer(forKey: staleDays),
+            notifySelf: notifySelf,
+            enabled: Set(NotificationCategory.allCases.filter { defaults.bool(forKey: notifyKey($0)) })
+        )
+    }
+
     static func registerDefaults() {
-        var defaults: [String: Any] = [pollMinutes: 2.0, staleDays: 30, ignoreBots: true, showLineCounts: true, showChecks: false, checkUpdates: true,
-                                     notificationGrouping: NotificationGrouping.together.rawValue]
-        for category in NotificationCategory.allCases { defaults[notifyKey(category)] = true }
+        var defaults: [String: Any] = [
+            pollMinutes: Default.pollMinutes, staleDays: Default.staleDays, ignoreBots: Default.ignoreBots,
+            showLineCounts: Default.showLineCounts, showChecks: Default.showChecks, checkUpdates: Default.checkUpdates,
+            notificationGrouping: Default.notificationGrouping.rawValue,
+        ]
+        for category in NotificationCategory.allCases { defaults[notifyKey(category)] = Default.notify }
         UserDefaults.standard.register(defaults: defaults)
     }
 }

@@ -6,18 +6,18 @@ import SwiftUI
 // No @State here: in the macOS 27 SDK it's a macro whose plugin only ships with
 // Xcode, so it doesn't build with the Command Line Tools alone.
 struct SettingsView: View {
-    @AppStorage(Prefs.pollMinutes) private var pollMinutes = 2.0
-    @AppStorage(Prefs.staleDays) private var staleDays = 30
-    @AppStorage(Prefs.ignoreBots) private var ignoreBots = true
-    @AppStorage(Prefs.showLineCounts) private var showLineCounts = true
-    @AppStorage(Prefs.showChecks) private var showChecks = false
-    @AppStorage(Prefs.checkUpdates) private var checkUpdates = true
-    @AppStorage(Prefs.notifyKey(.myPRs)) private var notifyMyPRs = true
-    @AppStorage(Prefs.notifyKey(.reviewRequests)) private var notifyRequests = true
-    @AppStorage(Prefs.notifyKey(.reviewing)) private var notifyReviewing = true
-    @AppStorage(Prefs.notifyKey(.merged)) private var notifyMerged = true
-    @AppStorage(Prefs.notifyKey(.checks)) private var notifyChecks = true
-    @AppStorage(Prefs.notificationGrouping) private var grouping = NotificationGrouping.together
+    @AppStorage(Prefs.pollMinutes) private var pollMinutes = Prefs.Default.pollMinutes
+    @AppStorage(Prefs.staleDays) private var staleDays = Prefs.Default.staleDays
+    @AppStorage(Prefs.ignoreBots) private var ignoreBots = Prefs.Default.ignoreBots
+    @AppStorage(Prefs.showLineCounts) private var showLineCounts = Prefs.Default.showLineCounts
+    @AppStorage(Prefs.showChecks) private var showChecks = Prefs.Default.showChecks
+    @AppStorage(Prefs.checkUpdates) private var checkUpdates = Prefs.Default.checkUpdates
+    @AppStorage(Prefs.notifyKey(.myPRs)) private var notifyMyPRs = Prefs.Default.notify
+    @AppStorage(Prefs.notifyKey(.reviewRequests)) private var notifyRequests = Prefs.Default.notify
+    @AppStorage(Prefs.notifyKey(.reviewing)) private var notifyReviewing = Prefs.Default.notify
+    @AppStorage(Prefs.notifyKey(.merged)) private var notifyMerged = Prefs.Default.notify
+    @AppStorage(Prefs.notifyKey(.checks)) private var notifyChecks = Prefs.Default.notify
+    @AppStorage(Prefs.notificationGrouping) private var grouping = Prefs.Default.notificationGrouping
     private let loginItem = LoginItem.shared
     private let hotKey = HotKey.shared
     private let store = PRStore.shared
