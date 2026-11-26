@@ -54,7 +54,7 @@ enum Prefs {
     static let staleDays = "staleDays"
     static let ignoreBots = "ignoreBots"
     static let showLineCounts = "showLineCounts"
-    /// Fetch and show checks and merge conflicts of your PRs.
+    /// Fetch and show checks and merge conflicts of the PRs in the panel.
     static let showChecks = "showChecks"
     /// Look for a newer release once a day.
     static let checkUpdates = "checkUpdates"
@@ -77,7 +77,7 @@ enum Prefs {
         static let staleDays = 30
         static let ignoreBots = true
         static let showLineCounts = true
-        static let showChecks = false
+        static let showChecks = true
         static let checkUpdates = true
         /// For every `NotificationCategory`.
         static let notify = true

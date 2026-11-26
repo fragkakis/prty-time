@@ -83,17 +83,21 @@ final class FakeGitHub: GitHubAPI, @unchecked Sendable {
         #expect(second.buckets.isEmpty)
     }
 
-    @Test func checksAreFetchedForYourPRsOnlyWhenTurnedOn() async throws {
-        let github = FakeGitHub([.mine: [pr("M", author: me)], .direct: [pr("A")]])
+    @Test func checksAreFetchedForThePRsOnShowWhenTurnedOn() async throws {
+        let stale = pr("S", updated: now.addingTimeInterval(-60 * 86_400))
+        let github = FakeGitHub([.mine: [pr("M", author: me)], .direct: [pr("A")], .team: [pr("T"), stale], .reviewed: [pr("R")]])
         let poller = Poller(github: github)
         #expect(try update(await poller.run(previous: nil, settings: settings, now: now)).mergeStatus == [:])
         #expect(github.requests == ["poll"])
 
         var on = settings
         on.fetchChecks = true
-        github.checks = .success(["M": MergeStatus(checks: .passing, headOid: "c1")])
-        #expect(try update(await poller.run(previous: nil, settings: on, now: now)).mergeStatus?["M"]?.checks == .passing)
-        #expect(github.requests.last == "checks [\"M\"]")
+        github.checks = .success(["M": MergeStatus(checks: .passing, headOid: "c1"), "A": MergeStatus(checks: .failing, headOid: "c2")])
+        let checked = try update(await poller.run(previous: nil, settings: on, now: now))
+        #expect(checked.mergeStatus?["M"]?.checks == .passing)
+        #expect(checked.mergeStatus?["A"]?.checks == .failing)
+        // Not the team request idle past `staleDays`, which the panel hides.
+        #expect(github.requests.last == "checks [\"A\", \"M\", \"R\", \"T\"]")
         // Failing, nil: the panel keeps showing the last ones.
         github.checks = .failure(.timeout)
         #expect(try update(await poller.run(previous: nil, settings: on, now: now)).mergeStatus == nil)
