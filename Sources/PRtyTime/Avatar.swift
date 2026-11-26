@@ -40,4 +40,11 @@ final class AvatarStore {
         guard let (data, _) = try? await URLSession.shared.data(from: url), let image = NSImage(data: data) else { return }
         images[url] = image
     }
+
+    #if DEMO
+    /// For `Screenshot`, whose avatars aren't downloaded.
+    func preload(_ image: NSImage, for url: URL) {
+        images[url] = image
+    }
+    #endif
 }
