@@ -70,6 +70,7 @@ struct SettingsView: View {
                     Image(nsImage: NSApp.applicationIconImage)
                         .resizable()
                         .frame(width: 36, height: 36)
+                        .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 1) {
                         Text(AppInfo.name).font(.headline)
                         Text("Version \(AppInfo.version)").font(.caption).foregroundStyle(.secondary)

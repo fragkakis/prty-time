@@ -82,6 +82,14 @@ struct GroupHeader: View {
         .padding(.top, 4)
         .onHover { panel.hover(key, inside: $0) }
         .help(group.repo)
+        .accessibilityLabel("\(group.repo), \(group.items.count) pull request\(group.items.count == 1 ? "" : "s")")
+        .accessibilityValue(spokenState)
+    }
+
+    /// What the chevron, dot and badge show.
+    private var spokenState: String {
+        guard collapsed else { return "expanded" }
+        return (["collapsed"] + (hasUnread ? ["unread"] : []) + (group.hasForYou ? ["review requested from you"] : [])).joined(separator: ", ")
     }
 }
 
@@ -158,6 +166,11 @@ struct PRRow: View {
             }
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(pr.title)
+        .accessibilityValue(pr.spokenDetails(
+            unread: unread, forYou: forYou, showAuthor: showAuthor, awaitingReview: labeledStatus,
+            diff: diff, merge: merge, snoozedUntil: snoozedUntil
+        ))
         // On the button itself: outside PRRow, VoiceOver's Show Menu opened
         // the menu of the repo group's first row.
         .contextMenu { RowMenu(pr: pr) }
