@@ -28,6 +28,13 @@ struct PRtyTimeApp: App {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
+        #if DEMO
+        // `make screenshots`: renders and quits, without polling.
+        if let dir = ProcessInfo.processInfo.environment["PRTY_SHOT"] {
+            Screenshot.run(to: dir)
+            return
+        }
+        #endif
         PRStore.shared.start()
         HotKey.shared.start()
     }
