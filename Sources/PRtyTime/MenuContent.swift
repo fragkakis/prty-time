@@ -37,6 +37,9 @@ struct MenuContent: View {
         let shown = filtering ? all.filtered(panel.query) : all
         let rows = shown.rows(panel.tab, collapsed: filtering ? [] : panel.collapsed, snoozedOpen: filtering || panel.snoozedOpen.contains(panel.tab))
         let selected = selection(in: rows)
+        // Ringed when picked with ↑ or ↓, or as the first match while filtering
+        // (not the hovered row): the one ↩ opens without the mouse.
+        let ringed = selected.flatMap { $0.id != panel.highlightedID || panel.pickedWithKeyboard ? $0.id : nil }
         // Everything in the tab, for the menu's Mark all as read.
         let tabPRs = shown.rows(panel.tab, collapsed: [], snoozedOpen: true).map(\.id)
 
@@ -72,6 +75,7 @@ struct MenuContent: View {
                 ScrollView {
                     list(panel.tab, shown, expandAll: filtering)
                         .environment(\.selectedRow, selected?.id)
+                        .environment(\.focusedRow, ringed)
                         .environment(\.tabPRs, tabPRs)
                 }
                 .onChange(of: panel.scrollTarget) { _, id in
@@ -211,14 +215,13 @@ struct MenuContent: View {
             .help("Snoozed PRs come back when there's new activity on them, or when their time runs out")
             if open {
                 // Dimmed, to tell them from the groups above.
-                groups(items, section: .snoozed(tab), mine: mine, expandAll: expandAll)
-                    .opacity(0.6)
+                groups(items, section: .snoozed(tab), mine: mine, dimmed: true, expandAll: expandAll)
             }
         }
     }
 
     /// Collapsible per-repo groups. `section` keeps collapse state separate per list.
-    private func groups(_ items: [PRItem], section: ListSection, mine: Bool = false, expandAll: Bool) -> some View {
+    private func groups(_ items: [PRItem], section: ListSection, mine: Bool = false, dimmed: Bool = false, expandAll: Bool) -> some View {
         ForEach(items.groupedByRepo()) { group in
             let key = group.key(in: section)
             let collapsed = !expandAll && panel.collapsed.contains(key)
@@ -228,7 +231,7 @@ struct MenuContent: View {
                     PRRow(pr: item.pr, unread: isUnread(item.pr), forYou: item.forYou, showAuthor: !mine, labeledStatus: mine,
                           diff: showLineCounts ? store.diffStats[item.pr.id] : nil,
                           merge: showChecks ? store.mergeStatus[item.pr.id] : nil,
-                          snoozedUntil: store.snoozed[item.pr.id]) {
+                          snoozedUntil: store.snoozed[item.pr.id], dimmed: dimmed) {
                         open(item.pr)
                     }
                     .padding(.leading, 16)
@@ -324,6 +327,18 @@ extension EnvironmentValues {
 }
 
 private struct SelectedRowKey: EnvironmentKey {
+    static let defaultValue: String? = nil
+}
+
+extension EnvironmentValues {
+    /// The id of the selected row when it was picked from the keyboard, which gets a focus ring.
+    var focusedRow: String? {
+        get { self[FocusedRowKey.self] }
+        set { self[FocusedRowKey.self] = newValue }
+    }
+}
+
+private struct FocusedRowKey: EnvironmentKey {
     static let defaultValue: String? = nil
 }
 
