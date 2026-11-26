@@ -77,14 +77,18 @@ enum Prefs {
         static let notificationGrouping = NotificationGrouping.together
     }
 
-    /// The saved settings `ActivityDiff` runs with.
-    static var diffSettings: DiffSettings {
+    /// The saved settings a poll runs with.
+    static var pollSettings: PollSettings {
         let defaults = UserDefaults.standard
-        return DiffSettings(
-            ignoreBots: defaults.bool(forKey: ignoreBots),
-            staleDays: defaults.integer(forKey: staleDays),
-            notifySelf: notifySelf,
-            enabled: Set(NotificationCategory.allCases.filter { defaults.bool(forKey: notifyKey($0)) })
+        return PollSettings(
+            intervalMinutes: defaults.double(forKey: pollMinutes),
+            fetchChecks: defaults.bool(forKey: showChecks),
+            diff: DiffSettings(
+                ignoreBots: defaults.bool(forKey: ignoreBots),
+                staleDays: defaults.integer(forKey: staleDays),
+                notifySelf: notifySelf,
+                enabled: Set(NotificationCategory.allCases.filter { defaults.bool(forKey: notifyKey($0)) })
+            )
         )
     }
 
