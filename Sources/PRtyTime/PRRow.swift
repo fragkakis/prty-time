@@ -107,8 +107,11 @@ struct PRRow: View {
     /// Only fetched for your PRs.
     var merge: MergeStatus?
     var snoozedUntil: Date?
+    /// Snoozed: secondary text instead of a lower opacity, which would fall below readable contrast.
+    var dimmed = false
     let action: () -> Void
     @Environment(\.selectedRow) private var selectedRow
+    @Environment(\.focusedRow) private var focusedRow
     private let panel = PanelState.shared
 
     var body: some View {
@@ -119,6 +122,7 @@ struct PRRow: View {
                     .frame(width: 6, height: 6)
                 if showAuthor {
                     Avatar(url: pr.author?.avatarURL)
+                        .opacity(dimmed ? 0.6 : 1)
                         .padding(.trailing, 2)
                 }
                 VStack(alignment: .leading, spacing: 2) {
@@ -126,7 +130,7 @@ struct PRRow: View {
                     HStack(spacing: 5) {
                         Text(pr.title)
                             .fontWeight(forYou ? .semibold : .regular)
-                            .foregroundStyle(pr.isDraft ? .secondary : .primary)
+                            .foregroundStyle(pr.isDraft || dimmed ? .secondary : .primary)
                             .lineLimit(1)
                         checks
                     }
@@ -138,13 +142,20 @@ struct PRRow: View {
                 Spacer(minLength: 6)
                 if forYou { YouBadge() }
                 if pr.isDraft { tag("Draft") }
-                if merge?.conflicting == true { tag("Conflicts", Color.linesRemoved) }
+                if merge?.conflicting == true { tag("Conflicts", Color.danger) }
                 decision
             }
             .padding(.horizontal, 6)
             .padding(.vertical, 5)
             .contentShape(Rectangle())
             .background(background, in: RoundedRectangle(cornerRadius: 6))
+            // The row ↩ opens, picked from the keyboard: a focus ring, which
+            // the faint hover fill alone isn't.
+            .overlay {
+                if focusedRow == pr.id {
+                    RoundedRectangle(cornerRadius: 6).strokeBorder(Color.accentColor, lineWidth: 2)
+                }
+            }
         }
         .buttonStyle(.plain)
         // On the button itself: outside PRRow, VoiceOver's Show Menu opened
@@ -159,7 +170,7 @@ struct PRRow: View {
         // verbatim: an interpolated Int in a localized Text gets a thousands separator ("#1.570").
         var text = Text(verbatim: "#\(pr.number)")
         if let labels = diff?.labels {
-            text = text + Text(" · ") + Text(labels.added).foregroundStyle(Color.linesAdded) + Text(" ") + Text(labels.removed).foregroundStyle(Color.linesRemoved)
+            text = text + Text(" · ") + Text(labels.added).foregroundStyle(Color.success) + Text(" ") + Text(labels.removed).foregroundStyle(Color.danger)
         }
         var rest: [String] = []
         if showAuthor, let author = pr.author { rest.append(author.login) }
@@ -171,9 +182,11 @@ struct PRRow: View {
         return text + Text(" · " + rest.joined(separator: " · "))
     }
 
+    /// Under the mouse or picked: grey, or a stronger tint on your rows so they keep their color.
     private var background: Color {
-        if selectedRow == pr.id { return .primary.opacity(0.1) }
-        return forYou ? .accentColor.opacity(0.12) : .clear
+        let selected = selectedRow == pr.id
+        if forYou { return .accentColor.opacity(selected ? 0.2 : 0.12) }
+        return selected ? .primary.opacity(0.1) : .clear
     }
 
     private func tag(_ text: String, _ style: some ShapeStyle = .secondary) -> some View {
@@ -188,17 +201,17 @@ struct PRRow: View {
     /// GitHub's symbols: a check, a cross, or a dot while running.
     @ViewBuilder private var checks: some View {
         switch merge?.checks {
-        case .passing: Image(systemName: "checkmark").font(.caption.weight(.bold)).foregroundStyle(Color.linesAdded).help("Checks passed")
-        case .failing: Image(systemName: "xmark").font(.caption.weight(.bold)).foregroundStyle(Color.linesRemoved).help("Checks failed")
-        case .pending: Image(systemName: "circle.fill").font(.system(size: 7)).foregroundStyle(Color.checksPending).help("Checks running")
+        case .passing: Image(systemName: "checkmark").font(.caption.weight(.bold)).foregroundStyle(Color.success).help("Checks passed")
+        case .failing: Image(systemName: "xmark").font(.caption.weight(.bold)).foregroundStyle(Color.danger).help("Checks failed")
+        case .pending: Image(systemName: "circle.fill").font(.system(size: 7)).foregroundStyle(Color.attention).help("Checks running")
         case nil: EmptyView()
         }
     }
 
     @ViewBuilder private var decision: some View {
         switch pr.reviewDecision {
-        case .approved: status("Approved", "checkmark.circle.fill", .green)
-        case .changesRequested: status("Changes requested", "xmark.circle.fill", .red)
+        case .approved: status("Approved", "checkmark.circle.fill", Color.success)
+        case .changesRequested: status("Changes requested", "xmark.circle.fill", Color.danger)
         case .reviewRequired where labeledStatus: status("Awaiting review", "clock", .secondary)
         default: EmptyView()
         }
@@ -213,11 +226,14 @@ struct PRRow: View {
     }
 }
 
-private extension Color {
-    // GitHub's diff colors. The system green and red are too light to read on white.
-    static let linesAdded = adaptive(light: (0x1A, 0x7F, 0x37), dark: (0x3F, 0xB9, 0x50))
-    static let linesRemoved = adaptive(light: (0xCF, 0x22, 0x2E), dark: (0xF8, 0x51, 0x49))
-    static let checksPending = adaptive(light: (0x9A, 0x67, 0x00), dark: (0xD2, 0x99, 0x22))
+extension Color {
+    // GitHub's colors, used for every status: the system green and red are too
+    // light to read on white (2:1 and 3.6:1; text needs 4.5:1). Two are a shade
+    // stronger than GitHub's (#1A7F37, #F85149), which are tuned for white and
+    // black and fell short on the panel's grey (#EFEFEF, #323232).
+    static let success = adaptive(light: (0x18, 0x75, 0x32), dark: (0x3F, 0xB9, 0x50))
+    static let danger = adaptive(light: (0xCF, 0x22, 0x2E), dark: (0xFF, 0x7B, 0x72))
+    static let attention = adaptive(light: (0x9A, 0x67, 0x00), dark: (0xD2, 0x99, 0x22))
 
     static func adaptive(light: (Int, Int, Int), dark: (Int, Int, Int)) -> Color {
         Color(nsColor: NSColor(name: nil) { appearance in
