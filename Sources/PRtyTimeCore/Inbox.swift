@@ -20,6 +20,15 @@ extension Snapshot {
     /// How far back GitHub notifications need checking; nil when nothing is unread.
     public var inboxSince: Date? { unread.compactMap { unreadSince[$0] }.min() }
 
+    /// How far back `inboxFetchStart` goes at most, so a dot that never clears
+    /// doesn't widen the request forever.
+    public static let inboxWindow: TimeInterval = 14 * 86_400
+
+    /// Where to start checking GitHub notifications: `inboxSince`, at most `inboxWindow` back.
+    public func inboxFetchStart(now: Date) -> Date? {
+        inboxSince.map { max($0, now.addingTimeInterval(-Self.inboxWindow)) }
+    }
+
     /// Clears the dots of `ids`, as opening them from the panel does.
     public mutating func markRead(_ ids: some Sequence<String>) {
         for id in ids {
