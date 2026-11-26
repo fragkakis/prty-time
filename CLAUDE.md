@@ -16,7 +16,7 @@ macOS menu-bar app (SwiftUI `MenuBarExtra`) that lists the GitHub PRs waiting on
 
 - Must build with only the Command Line Tools (no Xcode), Swift 6 language mode. There, `@State` doesn't compile (its macro plugin ships with Xcode), so view state lives in `@Observable` singletons (`PanelState`, `LoginItem`).
 - `make test`, `make install` (builds, copies to `/Applications/PRty Time.app`, relaunches), `make logs`.
-- CI (`macos-26` runner, Xcode 26 / Swift 6.3) is older than the local compiler and crashes on a method reference passed as a `Binding` setter; use a closure. When changing UI code, run a test build before tagging: `gh workflow run release.yml`.
+- CI (`macos-26` runner, Xcode 26 / Swift 6.3) is older than the local compiler and crashes on a method reference passed as a `Binding` setter; use a closure. `ci.yml` builds and tests every push to main and every PR on that runner.
 
 ## Don't rename
 

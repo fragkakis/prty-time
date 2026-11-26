@@ -1,0 +1,17 @@
+name: CI
+
+# Builds and tests every push to main and every pull request. The runner's
+# compiler is older than a local one and fails on code that builds locally (see
+# CLAUDE.md), so this catches that before a release tag does.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v7
+      - run: make build
+      - run: make test
