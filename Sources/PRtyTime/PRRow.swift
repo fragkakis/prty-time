@@ -44,6 +44,11 @@ struct GroupHeader: View {
     /// Off while filtering, when every group is shown expanded.
     let collapsible: Bool
     let hasUnread: Bool
+    /// Can be dragged onto another group of its list, which it then takes the place of.
+    var draggable = false
+    /// Move the group one place in its list, for VoiceOver; nil where it can't go.
+    var moveUp: (() -> Void)?
+    var moveDown: (() -> Void)?
     private let panel = PanelState.shared
 
     private var hovering: Bool { panel.highlightedID == key }
@@ -78,18 +83,37 @@ struct GroupHeader: View {
             .background(hovering ? Color.primary.opacity(0.06) : .clear, in: RoundedRectangle(cornerRadius: 6))
         }
         .buttonStyle(.plain)
+        .draggable(key, repo: group.repo, if: draggable)
         .allowsHitTesting(collapsible)
         .padding(.top, 4)
         .onHover { panel.hover(key, inside: $0) }
         .help(group.repo)
         .accessibilityLabel("\(group.repo), \(group.items.count) pull request\(group.items.count == 1 ? "" : "s")")
         .accessibilityValue(spokenState)
+        .accessibilityActions {
+            if let moveUp { Button("Move up", action: moveUp) }
+            if let moveDown { Button("Move down", action: moveDown) }
+        }
     }
 
     /// What the chevron, dot and badge show.
     private var spokenState: String {
         guard collapsed else { return "expanded" }
         return (["collapsed"] + (hasUnread ? ["unread"] : []) + (group.hasForYou ? ["review requested from you"] : [])).joined(separator: ", ")
+    }
+}
+
+private extension View {
+    /// Drags the repo group with `key`; the drop is up to the group it lands on.
+    @ViewBuilder func draggable(_ key: String, repo: String, if enabled: Bool) -> some View {
+        if enabled {
+            onDrag {
+                PanelState.shared.draggedGroup = key
+                return NSItemProvider(object: repo as NSString)
+            }
+        } else {
+            self
+        }
     }
 }
 

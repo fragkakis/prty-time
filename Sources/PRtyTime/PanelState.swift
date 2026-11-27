@@ -10,6 +10,7 @@ import SwiftUI
 final class PanelState {
     static let shared = PanelState()
     private static let collapsedKey = "collapsedGroups"
+    private static let repoOrderKey = "repoOrder"
 
     var tab = PanelTab.review
     var query = "" {
@@ -37,13 +38,30 @@ final class PanelState {
     var collapsed = Set(UserDefaults.standard.stringArray(forKey: PanelState.collapsedKey) ?? []) {
         didSet { UserDefaults.standard.set(collapsed.sorted(), forKey: Self.collapsedKey) }
     }
+    /// Repos as "owner/name" in the order dragged into (see `RepoOrder`), kept across launches.
+    var repoOrder = UserDefaults.standard.stringArray(forKey: PanelState.repoOrderKey) ?? [] {
+        didSet { UserDefaults.standard.set(repoOrder, forKey: Self.repoOrderKey) }
+    }
+    /// The key of the repo group being dragged.
+    var draggedGroup: String?
+    /// The key of the repo group the dragged one is over, where it would land.
+    var dropTarget: String?
 
     var isOpen: Bool { window?.isVisible == true }
 
     func opened() {
         highlightedID = nil
         mouseAtKey = nil
+        draggedGroup = nil
+        dropTarget = nil
         openings += 1
+    }
+
+    /// Moves `repo` to `index` of a list showing `shown`.
+    func moveRepo(_ repo: String, to index: Int, shown: [String]) {
+        withAnimation(.snappy(duration: 0.15)) {
+            repoOrder = RepoOrder.moving(repo, to: index, shown: shown, in: repoOrder)
+        }
     }
 
     func close() { closeRequests += 1 }

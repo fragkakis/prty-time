@@ -13,7 +13,7 @@ A macOS menu-bar app that lists the GitHub pull requests waiting on you, and not
 
 - **To review:** PRs requesting your review (marked *You*) or your teams' review, newest first, then open PRs you've already reviewed. Team requests idle for 30+ days are hidden.
 - **My PRs:** your open PRs with their review state (approved, changes requested, awaiting review).
-- **Grouped by repo:** click a repo to collapse it; remembered across launches.
+- **Grouped by repo:** click a repo to collapse it; remembered across launches. To put repos in your own order, turn on *Drag repos into your own order* in Settings and drag a repo onto another; repos you haven't moved go below, newest activity first.
 - **Right-click a PR** to open its checks, mark it read or unread (or everything in the tab read), snooze it, or copy its link, branch name or `gh pr checkout` command.
 - **Snooze:** right-click a PR to hide it until there's new activity, tomorrow morning or next week. It waits, dimmed, in a *Snoozed* section at the bottom of its tab and leaves the badge. Anything that would give it a blue dot brings it back early, as do failing checks on your own PRs.
 - **Filter:** type to filter by number (`#123`), title, repo, author or reviewer. Every word must match.

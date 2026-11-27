@@ -18,9 +18,11 @@ struct SettingsView: View {
     @AppStorage(Prefs.notifyKey(.merged)) private var notifyMerged = Prefs.Default.notify
     @AppStorage(Prefs.notifyKey(.checks)) private var notifyChecks = Prefs.Default.notify
     @AppStorage(Prefs.notificationGrouping) private var grouping = Prefs.Default.notificationGrouping
+    @AppStorage(Prefs.customRepoOrder) private var customRepoOrder = Prefs.Default.customRepoOrder
     private let loginItem = LoginItem.shared
     private let hotKey = HotKey.shared
     private let store = PRStore.shared
+    private let panel = PanelState.shared
 
     var body: some View {
         Form {
@@ -33,6 +35,17 @@ struct SettingsView: View {
                 Toggle("Show lines added and removed", isOn: $showLineCounts)
                 Toggle("Show checks and merge conflicts", isOn: $showChecks)
                     .onChange(of: showChecks) { _, on in if on { PRStore.shared.refreshNow() } }
+                Toggle("Drag repos into your own order", isOn: $customRepoOrder)
+                if customRepoOrder {
+                    LabeledContent {
+                        Button("Reset Order") { panel.repoOrder = [] }
+                            .disabled(panel.repoOrder.isEmpty)
+                    } label: {
+                        Text("Repos you haven't moved go below the rest, newest activity first.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
             }
             Section("Keyboard") {
                 LabeledContent("Open the panel from anywhere") { ShortcutRecorder() }
