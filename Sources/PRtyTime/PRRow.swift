@@ -53,46 +53,51 @@ struct GroupHeader: View {
 
     private var hovering: Bool { panel.highlightedID == key }
 
+    // A tap gesture, not a Button: a Button takes the mouse-down, so no drag
+    // ever starts on it.
     var body: some View {
-        Button {
-            withAnimation(.snappy(duration: 0.15)) {
-                if collapsed { panel.collapsed.remove(key) } else { panel.collapsed.insert(key) }
+        HStack(spacing: 6) {
+            Image(systemName: "chevron.right")
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(.secondary)
+                .rotationEffect(.degrees(collapsed ? 0 : 90))
+                .frame(width: 10)
+            Text(group.repoName)
+                .font(.callout.weight(.semibold))
+            Text("\(group.items.count)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Spacer()
+            // What the collapsed rows would have shown.
+            if collapsed && hasUnread {
+                Circle().fill(Color.accentColor).frame(width: 6, height: 6)
             }
-        } label: {
-            HStack(spacing: 6) {
-                Image(systemName: "chevron.right")
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(.secondary)
-                    .rotationEffect(.degrees(collapsed ? 0 : 90))
-                    .frame(width: 10)
-                Text(group.repoName)
-                    .font(.callout.weight(.semibold))
-                Text("\(group.items.count)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Spacer()
-                // What the collapsed rows would have shown.
-                if collapsed && hasUnread {
-                    Circle().fill(Color.accentColor).frame(width: 6, height: 6)
-                }
-                if collapsed && group.hasForYou { YouBadge() }
-            }
-            .padding(.horizontal, 6)
-            .padding(.vertical, 4)
-            .contentShape(Rectangle())
-            .background(hovering ? Color.primary.opacity(0.06) : .clear, in: RoundedRectangle(cornerRadius: 6))
+            if collapsed && group.hasForYou { YouBadge() }
         }
-        .buttonStyle(.plain)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 4)
+        .contentShape(Rectangle())
+        .background(hovering ? Color.primary.opacity(0.06) : .clear, in: RoundedRectangle(cornerRadius: 6))
+        .onTapGesture { toggle() }
         .draggable(key, repo: group.repo, if: draggable)
         .allowsHitTesting(collapsible)
         .padding(.top, 4)
         .onHover { panel.hover(key, inside: $0) }
         .help(group.repo)
+        .accessibilityElement(children: .ignore)
+        .accessibilityAddTraits(.isButton)
         .accessibilityLabel("\(group.repo), \(group.items.count) pull request\(group.items.count == 1 ? "" : "s")")
         .accessibilityValue(spokenState)
+        .accessibilityAction { toggle() }
         .accessibilityActions {
             if let moveUp { Button("Move up", action: moveUp) }
             if let moveDown { Button("Move down", action: moveDown) }
+        }
+    }
+
+    private func toggle() {
+        withAnimation(.snappy(duration: 0.15)) {
+            if collapsed { panel.collapsed.remove(key) } else { panel.collapsed.insert(key) }
         }
     }
 
