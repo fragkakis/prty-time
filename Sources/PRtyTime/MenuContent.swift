@@ -1,6 +1,7 @@
 import AppKit
 import PRtyTimeCore
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct MenuBarLabel: View {
     let store: PRStore
@@ -31,6 +32,7 @@ struct MenuContent: View {
     @AppStorage(Prefs.ignoreBots) private var ignoreBots = Prefs.Default.ignoreBots
     @AppStorage(Prefs.showLineCounts) private var showLineCounts = Prefs.Default.showLineCounts
     @AppStorage(Prefs.showChecks) private var showChecks = Prefs.Default.showChecks
+    @AppStorage(Prefs.customRepoOrder) private var customRepoOrder = Prefs.Default.customRepoOrder
     @Environment(\.openSettings) private var openSettings
     @Environment(\.dismiss) private var dismiss
     @FocusState private var filterFocused: Bool
@@ -39,13 +41,13 @@ struct MenuContent: View {
     var body: some View {
         let all = MenuSections(buckets: store.buckets, staleDays: staleDays, hideBots: ignoreBots, snoozed: Set(store.snoozed.keys))
         let shown = filtering ? all.filtered(panel.query) : all
-        let rows = shown.rows(panel.tab, collapsed: filtering ? [] : panel.collapsed, snoozedOpen: filtering || panel.snoozedOpen.contains(panel.tab))
+        let rows = shown.rows(panel.tab, collapsed: filtering ? [] : panel.collapsed, snoozedOpen: filtering || panel.snoozedOpen.contains(panel.tab), order: repoOrder)
         let selected = selection(in: rows)
         // Ringed when picked with ↑ or ↓, or as the first match while filtering
         // (not the hovered row): the one ↩ opens without the mouse.
         let ringed = selected.flatMap { $0.id != panel.highlightedID || panel.pickedWithKeyboard ? $0.id : nil }
         // Everything in the tab, for the menu's Mark all as read.
-        let tabPRs = shown.rows(panel.tab, collapsed: [], snoozedOpen: true).map(\.id)
+        let tabPRs = shown.rows(panel.tab, collapsed: [], snoozedOpen: true, order: repoOrder).map(\.id)
 
         VStack(spacing: 0) {
             filterField(rows: rows, selected: selected)
@@ -111,6 +113,9 @@ struct MenuContent: View {
     }
 
     private var filtering: Bool { !panel.query.trimmingCharacters(in: .whitespaces).isEmpty }
+
+    /// The repo order dragged into, or none for newest activity first.
+    private var repoOrder: [String] { customRepoOrder ? panel.repoOrder : [] }
 
     /// The PR ↩ opens: the highlighted one, or while filtering the first match.
     private func selection(in rows: [PullRequest]) -> PullRequest? {
@@ -229,23 +234,42 @@ struct MenuContent: View {
     }
 
     /// Collapsible per-repo groups. `section` keeps collapse state separate per list.
+    /// With a custom repo order, a group dropped on another takes its place.
+    /// Not while every group is expanded (filtering, or measuring the height).
     private func groups(_ items: [PRItem], section: ListSection, mine: Bool = false, dimmed: Bool = false, expandAll: Bool) -> some View {
-        ForEach(items.groupedByRepo()) { group in
-            let key = group.key(in: section)
+        let groups = items.groupedByRepo(order: repoOrder)
+        let repos = groups.map(\.repo)
+        let keys = groups.map { $0.key(in: section) }
+        let reorderable = customRepoOrder && !expandAll
+        let dragged = panel.draggedGroup.flatMap { keys.firstIndex(of: $0) }
+        return ForEach(Array(groups.enumerated()), id: \.element.id) { index, group in
+            let key = keys[index]
             let collapsed = !expandAll && panel.collapsed.contains(key)
-            GroupHeader(group: group, key: key, collapsed: collapsed, collapsible: !expandAll, hasUnread: group.items.contains { isUnread($0.pr) })
-            if !collapsed {
-                ForEach(group.items) { item in
-                    PRRow(pr: item.pr, unread: isUnread(item.pr), forYou: item.forYou, showAuthor: !mine, labeledStatus: mine,
-                          diff: showLineCounts ? store.diffStats[item.pr.id] : nil,
-                          merge: showChecks ? store.mergeStatus[item.pr.id] : nil,
-                          snoozedUntil: store.snoozed[item.pr.id], dimmed: dimmed) {
-                        open(item.pr)
+            VStack(alignment: .leading, spacing: 1) {
+                GroupHeader(group: group, key: key, collapsed: collapsed, collapsible: !expandAll, hasUnread: group.items.contains { isUnread($0.pr) },
+                            draggable: reorderable,
+                            moveUp: reorderable && index > 0 ? { panel.moveRepo(group.repo, to: index - 1, shown: repos) } : nil,
+                            moveDown: reorderable && index + 1 < repos.count ? { panel.moveRepo(group.repo, to: index + 1, shown: repos) } : nil)
+                if !collapsed {
+                    ForEach(group.items) { item in
+                        PRRow(pr: item.pr, unread: isUnread(item.pr), forYou: item.forYou, showAuthor: !mine, labeledStatus: mine,
+                              diff: showLineCounts ? store.diffStats[item.pr.id] : nil,
+                              merge: showChecks ? store.mergeStatus[item.pr.id] : nil,
+                              snoozedUntil: store.snoozed[item.pr.id], dimmed: dimmed) {
+                            open(item.pr)
+                        }
+                        .padding(.leading, 16)
+                        .id(item.pr.id)
                     }
-                    .padding(.leading, 16)
-                    .id(item.pr.id)
                 }
             }
+            // Where the dragged group would land: below this one when coming from above.
+            .overlay(alignment: (dragged ?? index) < index ? .bottom : .top) {
+                if reorderable && panel.dropTarget == key {
+                    Capsule().fill(Color.accentColor).frame(height: 2).allowsHitTesting(false)
+                }
+            }
+            .dropTarget(RepoDropDelegate(key: key, keys: keys, repos: repos), if: reorderable)
         }
     }
 
@@ -326,6 +350,51 @@ struct MenuContent: View {
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 24)
+    }
+}
+
+/// Takes a repo group dragged from the same list (`GroupHeader.draggable`) and
+/// moves it to this group's place.
+private struct RepoDropDelegate: DropDelegate {
+    let key: String
+    /// The list's group keys and their repos, top to bottom.
+    let keys: [String]
+    let repos: [String]
+
+    func validateDrop(info: DropInfo) -> Bool {
+        guard let dragged = PanelState.shared.draggedGroup else { return false }
+        return dragged != key && keys.contains(dragged)
+    }
+
+    func dropEntered(info: DropInfo) {
+        if validateDrop(info: info) { PanelState.shared.dropTarget = key }
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? { DropProposal(operation: .move) }
+
+    func dropExited(info: DropInfo) {
+        if PanelState.shared.dropTarget == key { PanelState.shared.dropTarget = nil }
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        let panel = PanelState.shared
+        defer {
+            panel.draggedGroup = nil
+            panel.dropTarget = nil
+        }
+        guard let dragged = panel.draggedGroup, let from = keys.firstIndex(of: dragged), let to = keys.firstIndex(of: key) else { return false }
+        panel.moveRepo(repos[from], to: to, shown: repos)
+        return true
+    }
+}
+
+private extension View {
+    @ViewBuilder func dropTarget(_ delegate: RepoDropDelegate, if enabled: Bool) -> some View {
+        if enabled {
+            onDrop(of: [.plainText], delegate: delegate)
+        } else {
+            self
+        }
     }
 }
 

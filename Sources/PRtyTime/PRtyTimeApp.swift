@@ -62,6 +62,8 @@ enum Prefs {
     static let hotKey = "hotKey"
     /// A `NotificationGrouping` raw value.
     static let notificationGrouping = "notificationGrouping"
+    /// Repo groups in the order dragged into (`PanelState.repoOrder`), not newest activity first.
+    static let customRepoOrder = "customRepoOrder"
 
     static func notifyKey(_ category: NotificationCategory) -> String { "notify.\(category.rawValue)" }
 
@@ -82,6 +84,7 @@ enum Prefs {
         /// For every `NotificationCategory`.
         static let notify = true
         static let notificationGrouping = NotificationGrouping.together
+        static let customRepoOrder = false
     }
 
     /// The saved settings a poll runs with.
@@ -103,7 +106,7 @@ enum Prefs {
         var defaults: [String: Any] = [
             pollMinutes: Default.pollMinutes, staleDays: Default.staleDays, ignoreBots: Default.ignoreBots,
             showLineCounts: Default.showLineCounts, showChecks: Default.showChecks, checkUpdates: Default.checkUpdates,
-            notificationGrouping: Default.notificationGrouping.rawValue,
+            notificationGrouping: Default.notificationGrouping.rawValue, customRepoOrder: Default.customRepoOrder,
         ]
         for category in NotificationCategory.allCases { defaults[notifyKey(category)] = Default.notify }
         UserDefaults.standard.register(defaults: defaults)

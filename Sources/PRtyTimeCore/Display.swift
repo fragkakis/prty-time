@@ -48,7 +48,8 @@ public enum ListSection: String, CaseIterable, Sendable {
 
 extension Array where Element == PRItem {
     /// Groups by repo, keeping order: a repo is placed where its first item is.
-    public func groupedByRepo() -> [RepoGroup] {
+    /// The repos in `order` (see `RepoOrder`) come first, in that order.
+    public func groupedByRepo(order: [String] = []) -> [RepoGroup] {
         var groups: [RepoGroup] = []
         var index: [String: Int] = [:]
         for item in self {
@@ -59,7 +60,11 @@ extension Array where Element == PRItem {
                 groups.append(RepoGroup(repo: item.pr.repo, items: [item]))
             }
         }
-        return groups
+        guard !order.isEmpty else { return groups }
+        let place = Dictionary(order.enumerated().map { ($1, $0) }, uniquingKeysWith: Swift.min)
+        return groups.enumerated()
+            .sorted { (place[$0.element.repo] ?? Int.max, $0.offset) < (place[$1.element.repo] ?? Int.max, $1.offset) }
+            .map(\.element)
     }
 }
 
@@ -117,10 +122,10 @@ public struct MenuSections: Sendable {
 extension MenuSections {
     /// The PRs `tab` shows, top to bottom: the rows ↑ and ↓ move through.
     /// Collapsed repo groups (keys from `RepoGroup.key(in:)`) and the Snoozed
-    /// list while closed are left out.
-    public func rows(_ tab: PanelTab, collapsed: Set<String>, snoozedOpen: Bool) -> [PullRequest] {
+    /// list while closed are left out. Repo groups are in `order` (see `RepoOrder`).
+    public func rows(_ tab: PanelTab, collapsed: Set<String>, snoozedOpen: Bool, order: [String] = []) -> [PullRequest] {
         func shown(_ items: [PRItem], _ section: ListSection) -> [PullRequest] {
-            items.groupedByRepo()
+            items.groupedByRepo(order: order)
                 .filter { !collapsed.contains($0.key(in: section)) }
                 .flatMap { $0.items.map(\.pr) }
         }
